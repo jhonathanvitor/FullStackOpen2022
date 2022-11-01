@@ -1,0 +1,34 @@
+exerci part 0-4
+
+Browser
+user open
+
+server
+
+HTTP GET https://studio.cs.helsink.fi/exampleapp/notes
+HTML-code
+HTTP GET https://studio.cs.helsink.fi/exampleapp/main.css
+
+main.css
+HTTP GET https://studio.cs.helsink.fi/exampleapp/main.js
+main.js
+
+browser starts
+executing js-code
+that requests JSON
+data form server
+HTTP GET https://studies.cs.helsinki.fi/exampleapp/data.json
+
+"content":"1234567890","date":"2022-11-01T11:36:26.414Z")]
+HTTP GET https://studies.cs.helsinki.fi/favicon.ico
+favicon.ico
+
+browser executes
+the event handler
+that renders notes
+to display
+Browser
+
+server
+
+www.websequencediagrams.com
