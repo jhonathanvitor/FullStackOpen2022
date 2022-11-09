@@ -108,7 +108,7 @@ const App = () => {
           setNotificationText("Added ");
           setNotificationName(returnedPerson.name);
           setToggle(!toggle);
-          setTimeout(() => {
+          setTimeout(() => {  
             setToggle(false);
           }, 5000);
         })
