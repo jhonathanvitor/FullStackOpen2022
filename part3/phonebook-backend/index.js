@@ -1,92 +1,138 @@
-const express = require('express')
+require("dotenv").config();
+const express = require("express");
 const app = express();
+const cors = require("cors");
+const morgan = require("morgan");
+const Person = require("./models/person");
 
-app.use(express.json())
+// MIDDLEWARES
+app.use(express.static("build"));
+app.use(cors());
+app.use(express.json());
 
-let person = [
-  { 
-    "id": 1,
-    "name": "Arto Hellas", 
-    "number": "040-123456"
-  },
-  { 
-    "id": 2,
-    "name": "Ada Lovelace", 
-    "number": "39-44-5323523"
-  },
-  { 
-    "id": 3,
-    "name": "Dan Abramov", 
-    "number": "12-43-234345"
-  },
-  { 
-    "id": 4,
-    "name": "Mary Poppendieck", 
-    "number": "39-23-6423122"
-  }
-]
-
-app.get('/', (req, res) => {
-  res.send('Hello world')
-})
-
-app.get("/info", (req, res) => {
-  const count = person.length
-  res.send(`
-  <p>Phonebook has info for ${count} people</p>
-  <p>${new Date()}</p>
-`)
-})
-
-app.get('/api/persons', (req, res) => {
-    res.json(person)
-})
-
-app.get('/api/persons/:id', (req, res) => {
-  try {
-    const id = Number(req.params.id)
-    const Person = person.find(note => note.id === id)
-    if (Person == undefined){
-      throw new Error()
-    }
-    res.json(Person)
-  } catch (error) {
-    res.sendStatus(404).send(console.log("User not found"))
-  }
-})
-
-app.delete("/api/persons/:id", (req, res) => {
-	try {
-    const {id} = req.params;
-    const Person = person.find(note => note.id === id)
-    person.splice(Person, 1)
-    res.sendStatus(204);
-  } catch (error) {
-    console.log(error);
-    res.sendStatus(500);
-  }
+// MORGAN
+morgan.token("content", (req) => {
+  return JSON.stringify(req.body);
 });
 
-app.post("/api/persons/", (req, res) => {
-	try {
-    const newPerson = req.body;
-    console.log(newPerson)
-    res.json(newPerson);
-    res.sendStatus(204);
+app.use(
+  morgan(
+    ":method :url :status :res[content-length] - :response-time ms :content"
+  )
+);
 
-  } catch (error) {
-    console.log(error);
-    res.sendStatus(500);
+// ERROR HANDLER
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message);
+
+  if (error.name === "CastError") {
+    return response.status(400).send({ error: "malformatted id" });
+  } else if (error.name === "ValidationError") {
+    return response.status(406).json({ error: error.message });
+  } else if (error.name === "BadRequest") {
+    return response.status(400).json({ error: error.message });
   }
+  next(error);
+};
+
+// GET ALL PERSONS
+app.get("/api/persons", (request, response) => {
+  Person.find({}).then((persons) => {
+    response.json(persons);
+  });
 });
 
-app.put('/api/persons/:id', function (req, res) {
-  var updatePreson = req.person;
-  console.log(updatePreson)
-
+// DELETE A PERSON
+app.delete("/api/persons/:id", (request, response, next) => {
+  Person.findByIdAndRemove(request.params.id)
+    .then(() => {
+      response.status(204).end();
+    })
+    .catch((error) => next(error));
 });
 
-const PORT = 3001
+// GET A SINGLE PERSON
+app.get("/api/persons/:id", (request, response, next) => {
+  Person.findById(request.params.id)
+    .then((person) => {
+      if (person) {
+        response.json(person);
+      } else {
+        response.status(404).end();
+      }
+    })
+    .catch((error) => {
+      console.log("WROND ID");
+      next(error);
+    });
+});
+
+// POST A NEW PERSON
+app.post("/api/persons", (request, response, next) => {
+  const body = request.body;
+
+  if (body.name === undefined) {
+    return response.status(400).json({ error: "content missing" });
+  }
+
+  const person = new Person({
+    name: body.name,
+    phone: body.phone,
+  });
+
+  person
+    .save()
+    .then((savedPerson) => savedPerson.toJSON())
+    .then((savedAndFormattedPerson) => response.json(savedAndFormattedPerson))
+    .catch((error) => next(error));
+});
+
+// UPDATE A PERSON
+app.put("/api/persons/:id", (request, response, next) => {
+  const body = request.body;
+
+  const person = {
+    name: body.name,
+    phone: body.phone,
+  };
+
+  Person.findByIdAndUpdate(request.params.id, person, {
+    new: true,
+    runValidators: true,
+    context: "query",
+  })
+    .then((updatedPerson) => {
+      if (updatedPerson === null) {
+        return response.status(404).end();
+      }
+      response.json(updatedPerson);
+    })
+    .catch((error) => next(error));
+});
+
+// INFO PAGE
+app.get("/info", (request, response) => {
+  Person.find({}).then((persons) => {
+    response.send(
+      "Phonebook has info for " +
+        persons.length +
+        " people" +
+        "<br></br>" +
+        new Date().toLocaleString("fi-FI", { timeZone: "Europe/Helsinki" })
+    );
+  });
+});
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: "unknown endpoint" });
+};
+
+// handler of requests with unknown endpoint
+app.use(unknownEndpoint);
+// error handler
+app.use(errorHandler);
+
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
+  console.log(`Server running on port ${PORT}`);
+});
