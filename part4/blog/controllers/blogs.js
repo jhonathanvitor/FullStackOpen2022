@@ -1,16 +1,26 @@
-const express = require('express');
-const Blog = require('../models/blog');
-const { getBlog, postBlog } = require('../controlers/blogControler');
-const routerBlog = express.Router();
+const blogsRouter = require("express").Router();
+const Blog = require("../models/blog");
+const jwt = require("jsonwebtoken");
+const middleware = require("../utils/middleware");
 
 // GET ALL BLOGS
-routerBlog.get("/", getBlog());
+blogsRouter.get("/", async (request, response) => {
+  const blogs = await Blog.find({}).populate("user", { username: 1, name: 1 });
+  response.json(blogs);
+});
 
 // GET SINGLE BLOG
-routerBlog.get("/:id", postBlog());
+blogsRouter.get("/:id", async (request, response) => {
+  const blog = await Blog.findById(request.params.id);
+  if (blog) {
+    response.json(blog);
+  } else {
+    response.status(404).end();
+  }
+});
 
 // ADD NEW BLOG
-routerBlog.post("/", middleware.userExtractor, async (request, response) => {
+blogsRouter.post("/", middleware.userExtractor, async (request, response) => {
   const body = request.body;
   const user = request.user;
 
@@ -39,7 +49,7 @@ routerBlog.post("/", middleware.userExtractor, async (request, response) => {
 });
 
 // DELETE A BLOG
-routerBlog.delete(
+blogsRouter.delete(
   "/:id",
   middleware.userExtractor,
   async (request, response) => {
@@ -64,7 +74,7 @@ routerBlog.delete(
 );
 
 // UPDATE A BLOG
-routerBlog.put("/:id", async (request, response) => {
+blogsRouter.put("/:id", async (request, response) => {
   const body = request.body;
 
   const blog = {
@@ -87,4 +97,4 @@ routerBlog.put("/:id", async (request, response) => {
   }
 });
 
-module.exports = routerBlog
+module.exports = blogsRouter;
